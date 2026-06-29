@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>骨架编辑器｜整体弹性变形版</title>
+<style>
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    font-family: Arial, "Microsoft YaHei", sans-serif;
+    background: #f3f4f6;
+    color: #222;
+  }
+
+  header {
+    height: 72px;
+    background: #111;
+    color: #fff;
+    padding: 14px 22px;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 24px;
+  }
+
+  header p {
+    margin: 6px 0 0;
+    font-size: 13px;
+    color: #d1d5db;
+  }
+
+  .app {
+    display: grid;
+    grid-template-columns: 220px 1fr 270px;
+    gap: 14px;
+    padding: 14px;
+    height: calc(100vh - 72px);
+  }
+
+  .panel {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    padding: 14px;
+    overflow: auto;
+  }
+
+  .left-title,
+  .right-title {
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 10px;
+  }
+
+  .glyph-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    background: #fafafa;
+  }
+
+  .glyph-card.active {
+    background: #2563eb;
+    color: #fff;
+    border-color: #2563eb;
+  }
+
+  .glyph-card .code {
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .glyph-card .desc {
+    margin-top: 6px;
+    font-size: 12px;
+    opacity: 0.8;
+  }
+
+  .main {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+
+  button {
+    border: 0;
+    border-radius: 7px;
+    padding: 8px 13px;
+    font-size: 13px;
+    cursor: pointer;
+    background: #4b5563;
+    color: #fff;
+  }
+
+  button.primary {
+    background: #2563eb;
+  }
+
+  button.warning {
+    background: #d97706;
+  }
+
+  button:hover {
+    filter: brightness(0.95);
+  }
+
+  select {
+    height: 32px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 0 8px;
+    min-width: 180px;
+  }
+
+  .canvas-wrap {
+    flex: 1;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+    position: relative;
+  }
+
+  canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .tips {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #4b5563;
+    line-height: 1.7;
+  }
+
+  .control-group {
+    margin-bottom: 18px;
+  }
+
+  .control-group label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 7px;
+  }
+
+  input[type="range"] {
+    width: 100%;
+  }
+
+  .check-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    margin: 8px 0;
+  }
+
+  .status {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  .note {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #9a3412;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 12px;
+    line-height: 1.7;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>骨架编辑器｜整体弹性变形版</h1>
+  <p>拖动一个控制点，整体骨架、相邻边、完整字形预览都会联动变形；支持固定点、平滑、结构保持、导出。</p>
+</header>
+
+<div class="app">
+  <aside class="panel">
+    <div class="left-title">字形列表</div>
+    <div id="glyphList"></div>
+  </aside>
+
+  <main class="main">
+    <div class="toolbar">
+      <button class="primary" id="saveBtn">保存当前步骤</button>
+      <button id="exportSvgBtn">导出 SVG</button>
+      <button id="exportPngBtn">导出 PNG</button>
+      <button id="smoothBtn">平滑控制点</button>
+      <button class="warning" id="resetBtn">恢复初始字形</button>
+      <select id="versionSelect"></select>
+    </div>
+
+    <div class="canvas-wrap">
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <div class="tips">
+      操作方式：拖动白色控制点进行整体弹性变形；Ctrl + 点击控制点可固定 / 取消固定；Shift + 拖动为更强的整体联动；Alt + 拖动为更强的局部编辑。
+    </div>
+  </main>
+
+  <aside class="panel">
+    <div class="right-title">显示控制</div>
+
+    <div class="check-row">
+      <input type="checkbox" id="showOriginal" checked>
+      <label for="showOriginal">显示原始骨架 / 轮廓</label>
+    </div>
+
+    <div class="check-row">
+      <input type="checkbox" id="showPreview" checked>
+      <label for="showPreview">显示完整字形预览</label>
+    </div>
+
+    <div class="check-row">
+      <input type="checkbox" id="showSkeleton" checked>
+      <label for="showSkeleton">显示当前骨架</label>
+    </div>
+
+    <div class="check-row">
+      <input type="checkbox" id="showPoints" checked>
+      <label for="showPoints">显示控制点</label>
+    </div>
+
+    <hr>
+
+    <div class="control-group">
+      <label>整体联动强度 <span id="globalValue">0.62</span></label>
+      <input id="globalStrength" type="range" min="0" max="1" step="0.01" value="0.62">
+    </div>
+
+    <div class="control-group">
+      <label>局部影响半径 <span id="radiusValue">210</span></label>
+      <input id="influenceRadius" type="range" min="40" max="520" step="1" value="210">
+    </div>
+
+    <div class="control-group">
+      <label>结构保持强度 <span id="preserveValue">0.78</span></label>
+      <input id="preserveStrength" type="range" min="0" max="1" step="0.01" value="0.78">
+    </div>
+
+    <div class="control-group">
+      <label>平滑强度 <span id="smoothValue">0.06</span></label>
+      <input id="smoothStrength" type="range" min="0" max="0.25" step="0.01" value="0.06">
+    </div>
+
+    <div class="control-group">
+      <label>完整字形粗细 <span id="thickValue">34</span></label>
+      <input id="strokeThickness" type="range" min="8" max="80" step="1" value="34">
+    </div>
+
+    <div class="status" id="statusBox"></div>
+
+    <br>
+
+    <div class="note">
+      说明：这个版本不是单点拉伸，而是“图结构距离传播 + 边长保持 + 拉普拉斯平滑”。所以拖一个点时，附近笔画和整体结构都会跟着动。
+    </div>
+  </aside>
+</div>
+
+<script>
+"use strict";
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const state = {
+  glyphs: [],
+  activeGlyphIndex: 0,
+  drag: null,
+  hoverIndex: -1,
+  scale: 1,
+  offsetX: 0,
+  offsetY: 0
+};
+
+const ui = {
+  showOriginal: document.getElementById("showOriginal"),
+  showPreview: document.getElementById("showPreview"),
+  showSkeleton: document.getElementById("showSkeleton"),
+  showPoints: document.getElementById("showPoints"),
+  globalStrength: document.getElementById("globalStrength"),
+  influenceRadius: document.getElementById("influenceRadius"),
+  preserveStrength: document.getElementById("preserveStrength"),
+  smoothStrength: document.getElementById("smoothStrength"),
+  strokeThickness: document.getElementById("strokeThickness"),
+  globalValue: document.getElementById("globalValue"),
+  radiusValue: document.getElementById("radiusValue"),
+  preserveValue: document.getElementById("preserveValue"),
+  smoothValue: document.getElementById("smoothValue"),
+  thickValue: document.getElementById("thickValue"),
+  statusBox: document.getElementById("statusBox"),
+  versionSelect: document.getElementById("versionSelect")
+};
+
+function createDemoGlyphs() {
+  const pts1 = [
+    {x:120,y:220},{x:138,y:190},{x:175,y:160},{x:225,y:148},{x:250,y:163},
+    {x:258,y:220},{x:270,y:230},{x:292,y:230},{x:318,y:230},{x:345,y:230},
+    {x:370,y:215},{x:398,y:192},{x:430,y:210},{x:462,y:232},
+    {x:488,y:232},{x:512,y:232},{x:538,y:232},{x:566,y:232},
+    {x:595,y:213},{x:625,y:195},{x:655,y:215},{x:682,y:235},
+    {x:708,y:220},{x:738,y:198},{x:770,y:215},{x:792,y:250},
+    {x:805,y:292},{x:792,y:336},
+
+    {x:260,y:245},{x:260,y:280},{x:263,y:320},{x:266,y:365},
+    {x:384,y:238},{x:382,y:272},{x:387,y:312},{x:407,y:345},{x:450,y:360},{x:510,y:350},{x:532,y:312},{x:534,y:270},{x:520,y:238},
+
+    {x:370,y:230},{x:392,y:252},{x:430,y:282},{x:470,y:252},{x:488,y:232}
+  ];
+
+  const edges1 = [
+    [0,1],[1,2],[2,3],[3,4],[4,5],
+    [5,6],[6,7],[7,8],[8,9],[9,10],
+    [10,11],[11,12],[12,13],[13,14],
+    [14,15],[15,16],[16,17],[17,18],
+    [18,19],[19,20],[20,21],[21,22],
+    [22,23],[23,24],[24,25],[25,26],[26,27],
+    [5,28],[28,29],[29,30],[30,31],
+    [32,33],[33,34],[34,35],[35,36],[36,37],[37,38],[38,39],[39,40],
+    [9,41],[41,42],[42,43],[43,44],[44,14],
+    [32,41],[40,17]
+  ];
+
+  const pts2 = [
+    {x:150,y:180},{x:190,y:150},{x:250,y:165},{x:292,y:215},{x:330,y:230},
+    {x:380,y:220},{x:420,y:190},{x:470,y:210},{x:505,y:250},{x:545,y:232},
+    {x:590,y:210},{x:640,y:225},{x:700,y:260},
+
+    {x:240,y:180},{x:242,y:230},{x:245,y:290},{x:248,y:350},
+    {x:395,y:225},{x:390,y:280},{x:405,y:335},{x:455,y:360},{x:510,y:338},{x:530,y:285},{x:520,y:235}
+  ];
+
+  const edges2 = [
+    [0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,10],[10,11],[11,12],
+    [2,13],[13,14],[14,15],[15,16],
+    [5,17],[17,18],[18,19],[19,20],[20,21],[21,22],[22,23],[23,7]
+  ];
+
+  return [
+    makeGlyph("U1825", "蒙古文字形示例 01", pts1, edges1),
+    makeGlyph("U1820", "蒙古文字形示例 02", pts2, edges2)
+  ];
+}
+
+function makeGlyph(code, name, points, edges) {
+  return {
+    code,
+    name,
+    basePoints: clonePoints(points),
+    points: clonePoints(points),
+    edges: edges.map(e => [...e]),
+    pinned: new Set(),
+    versions: [
+      {
+        name: "Step 01",
+        points: clonePoints(points),
+        pinned: []
+      }
+    ]
+  };
+}
+
+function init() {
+  state.glyphs = createDemoGlyphs();
+
+  setupEvents();
+  renderGlyphList();
+  updateVersionSelect();
+  resizeCanvas();
+  requestAnimationFrame(draw);
+}
+
+function setupEvents() {
+  window.addEventListener("resize", () => {
+    resizeCanvas();
+    draw();
+  });
+
+  canvas.addEventListener("pointerdown", onPointerDown);
+  canvas.addEventListener("pointermove", onPointerMove);
+  canvas.addEventListener("pointerup", onPointerUp);
+  canvas.addEventListener("pointerleave", onPointerUp);
+
+  canvas.addEventListener("contextmenu", e => e.preventDefault());
+
+  document.getElementById("saveBtn").addEventListener("click", saveVersion);
+  document.getElementById("resetBtn").addEventListener("click", resetGlyph);
+  document.getElementById("smoothBtn").addEventListener("click", smoothCurrentGlyph);
+  document.getElementById("exportSvgBtn").addEventListener("click", exportSVG);
+  document.getElementById("exportPngBtn").addEventListener("click", exportPNG);
+
+  ui.versionSelect.addEventListener("change", () => {
+    const glyph = getGlyph();
+    const v = glyph.versions[Number(ui.versionSelect.value)];
+    if (!v) return;
+    glyph.points = clonePoints(v.points);
+    glyph.pinned = new Set(v.pinned || []);
+    draw();
+  });
+
+  const controls = [
+    ui.showOriginal,
+    ui.showPreview,
+    ui.showSkeleton,
+    ui.showPoints,
+    ui.globalStrength,
+    ui.influenceRadius,
+    ui.preserveStrength,
+    ui.smoothStrength,
+    ui.strokeThickness
+  ];
+
+  controls.forEach(el => {
+    el.addEventListener("input", () => {
+      updateLabels();
+      draw();
+    });
+  });
+
+  updateLabels();
+}
+
+function resizeCanvas() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.max(300, Math.floor(rect.width * dpr));
+  canvas.height = Math.max(300, Math.floor(rect.height * dpr));
+  canvas.style.width = rect.width + "px";
+  canvas.style.height = rect.height + "px";
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  fitGlyphToCanvas();
+}
+
+function fitGlyphToCanvas() {
+  const glyph = getGlyph();
+  const all = glyph.points;
+  const box = getBounds(all);
+  const rect = canvas.getBoundingClientRect();
+
+  const padding = 90;
+  const sx = (rect.width - padding * 2) / Math.max(1, box.width);
+  const sy = (rect.height - padding * 2) / Math.max(1, box.height);
+
+  state.scale = Math.min(sx, sy);
+  state.offsetX = rect.width / 2 - (box.cx * state.scale);
+  state.offsetY = rect.height / 2 - (box.cy * state.scale);
+}
+
+function getGlyph() {
+  return state.glyphs[state.activeGlyphIndex];
+}
+
+function updateLabels() {
+  ui.globalValue.textContent = Number(ui.globalStrength.value).toFixed(2);
+  ui.radiusValue.textContent = ui.influenceRadius.value;
+  ui.preserveValue.textContent = Number(ui.preserveStrength.value).toFixed(2);
+  ui.smoothValue.textContent = Number(ui.smoothStrength.value).toFixed(2);
+  ui.thickValue.textContent = ui.strokeThickness.value;
+}
+
+function renderGlyphList() {
+  const box = document.getElementById("glyphList");
+  box.innerHTML = "";
+
+  state.glyphs.forEach((g, index) => {
+    const div = document.createElement("div");
+    div.className = "glyph-card" + (index === state.activeGlyphIndex ? " active" : "");
+    div.innerHTML = `
+      <div class="code">${g.code}</div>
+      <div class="desc">${g.versions.length} 个版本</div>
+    `;
+    div.addEventListener("click", () => {
+      state.activeGlyphIndex = index;
+      renderGlyphList();
+      updateVersionSelect();
+      fitGlyphToCanvas();
+      draw();
+    });
+    box.appendChild(div);
+  });
+}
+
+function updateVersionSelect() {
+  const glyph = getGlyph();
+  ui.versionSelect.innerHTML = "";
+
+  glyph.versions.forEach((v, i) => {
+    const op = document.createElement("option");
+    op.value = String(i);
+    op.textContent = v.name;
+    ui.versionSelect.appendChild(op);
+  });
+
+  ui.versionSelect.value = String(glyph.versions.length - 1);
+}
+
+function onPointerDown(e) {
+  const glyph = getGlyph();
+  const mouse = screenToWorld(getMouse(e));
+  const hit = findNearestPoint(mouse, glyph.points, 14 / state.scale);
+
+  if (hit === -1) return;
+
+  if (e.ctrlKey || e.metaKey) {
+    if (glyph.pinned.has(hit)) {
+      glyph.pinned.delete(hit);
+    } else {
+      glyph.pinned.add(hit);
+    }
+    draw();
+    return;
+  }
+
+  canvas.setPointerCapture(e.pointerId);
+
+  state.drag = {
+    handleIndex: hit,
+    basePoints: clonePoints(glyph.points),
+    basePinned: new Set(glyph.pinned),
+    startMouse: mouse
+  };
+}
+
+function onPointerMove(e) {
+  const glyph = getGlyph();
+  const mouse = screenToWorld(getMouse(e));
+
+  state.hoverIndex = findNearestPoint(mouse, glyph.points, 14 / state.scale);
+
+  if (!state.drag) {
+    draw();
+    return;
+  }
+
+  let globalStrength = Number(ui.globalStrength.value);
+  let influenceRadius = Number(ui.influenceRadius.value);
+
+  if (e.shiftKey) {
+    globalStrength = Math.min(1, globalStrength + 0.28);
+    influenceRadius = influenceRadius * 1.45;
+  }
+
+  if (e.altKey) {
+    globalStrength = Math.max(0.05, globalStrength - 0.25);
+    influenceRadius = influenceRadius * 0.55;
+  }
+
+  const result = elasticDeform({
+    basePoints: state.drag.basePoints,
+    edges: glyph.edges,
+    handleIndex: state.drag.handleIndex,
+    target: mouse,
+    pinned: state.drag.basePinned,
+    globalStrength,
+    influenceRadius,
+    preserveStrength: Number(ui.preserveStrength.value),
+    smoothStrength: Number(ui.smoothStrength.value),
+    preserveIterations: 16,
+    smoothIterations: 3
+  });
+
+  glyph.points = result;
+  draw();
+}
+
+function onPointerUp() {
+  state.drag = null;
+}
+
+function elasticDeform({
+  basePoints,
+  edges,
+  handleIndex,
+  target,
+  pinned,
+  globalStrength,
+  influenceRadius,
+  preserveStrength,
+  smoothStrength,
+  preserveIterations,
+  smoothIterations
+}) {
+  const handle = basePoints[handleIndex];
+  const dx = target.x - handle.x;
+  const dy = target.y - handle.y;
+
+  const graphDistances = computeGraphDistances(basePoints, edges, handleIndex);
+
+  const fixed = new Set(pinned);
+  fixed.add(handleIndex);
+
+  let points = basePoints.map((p, i) => {
+    if (pinned.has(i)) {
+      return {...p};
+    }
+
+    let w = influenceWeight({
+      p,
+      handle,
+      graphDistance: graphDistances[i],
+      radius: influenceRadius,
+      globalStrength
+    });
+
+    if (i === handleIndex) {
+      w = 1;
+    }
+
+    return {
+      x: p.x + dx * w,
+      y: p.y + dy * w
+    };
+  });
+
+  points[handleIndex] = {...target};
+
+  points = preserveEdgeLengths({
+    points,
+    basePoints,
+    edges,
+    fixed,
+    strength: preserveStrength,
+    iterations: preserveIterations
+  });
+
+  points = laplacianSmooth({
+    points,
+    edges,
+    fixed,
+    strength: smoothStrength,
+    iterations: smoothIterations
+  });
+
+  points[handleIndex] = {...target};
+
+  return points;
+}
+
+function influenceWeight({p, handle, graphDistance, radius, globalStrength}) {
+  const euclid = distance(p, handle);
+
+  let topoWeight = 0;
+
+  if (Number.isFinite(graphDistance)) {
+    const t = clamp(1 - graphDistance / radius, 0, 1);
+    topoWeight = smoothstep(t);
+  }
+
+  const euclidWeight = Math.exp(-(euclid * euclid) / (2 * radius * radius));
+  let w = Math.max(topoWeight, euclidWeight * 0.72);
+
+  w = w * globalStrength + 0.08 * globalStrength;
+
+  return clamp(w, 0, 1);
+}
+
+function computeGraphDistances(points, edges, start) {
+  const n = points.length;
+  const adj = Array.from({length: n}, () => []);
+
+  for (const [a, b] of edges) {
+    const len = distance(points[a], points[b]);
+    adj[a].push([b, len]);
+    adj[b].push([a, len]);
+  }
+
+  const d = Array(n).fill(Infinity);
+  const used = Array(n).fill(false);
+  d[start] = 0;
+
+  for (let k = 0; k < n; k++) {
+    let u = -1;
+    let best = Infinity;
+
+    for (let i = 0; i < n; i++) {
+      if (!used[i] && d[i] < best) {
+        best = d[i];
+        u = i;
+      }
+    }
+
+    if (u === -1) break;
+    used[u] = true;
+
+    for (const [v, w] of adj[u]) {
+      if (d[u] + w < d[v]) {
+        d[v] = d[u] + w;
+      }
+    }
+  }
+
+  return d;
+}
+
+function preserveEdgeLengths({points, basePoints, edges, fixed, strength, iterations}) {
+  let pts = clonePoints(points);
+  const rest = edges.map(([a, b]) => distance(basePoints[a], basePoints[b]));
+
+  for (let iter = 0; iter < iterations; iter++) {
+    for (let i = 0; i < edges.length; i++) {
+      const [a, b] = edges[i];
+      const pa = pts[a];
+      const pb = pts[b];
+
+      const vx = pb.x - pa.x;
+      const vy = pb.y - pa.y;
+      const len = Math.hypot(vx, vy);
+
+      if (len < 0.0001) continue;
+
+      const diff = (len - rest[i]) / len;
+      const cx = vx * diff * 0.5 * strength;
+      const cy = vy * diff * 0.5 * strength;
+
+      const fa = fixed.has(a);
+      const fb = fixed.has(b);
+
+      if (!fa && !fb) {
+        pts[a].x += cx;
+        pts[a].y += cy;
+        pts[b].x -= cx;
+        pts[b].y -= cy;
+      } else if (fa && !fb) {
+        pts[b].x -= cx * 2;
+        pts[b].y -= cy * 2;
+      } else if (!fa && fb) {
+        pts[a].x += cx * 2;
+        pts[a].y += cy * 2;
+      }
+    }
+  }
+
+  return pts;
+}
+
+function laplacianSmooth({points, edges, fixed, strength, iterations}) {
+  const n = points.length;
+  const adj = Array.from({length: n}, () => []);
+
+  for (const [a, b] of edges) {
+    adj[a].push(b);
+    adj[b].push(a);
+  }
+
+  let pts = clonePoints(points);
+
+  for (let iter = 0; iter < iterations; iter++) {
+    const next = clonePoints(pts);
+
+    for (let i = 0; i < n; i++) {
+      if (fixed.has(i)) continue;
+      if (!adj[i].length) continue;
+
+      let ax = 0;
+      let ay = 0;
+
+      for (const j of adj[i]) {
+        ax += pts[j].x;
+        ay += pts[j].y;
+      }
+
+      ax /= adj[i].length;
+      ay /= adj[i].length;
+
+      next[i].x = pts[i].x * (1 - strength) + ax * strength;
+      next[i].y = pts[i].y * (1 - strength) + ay * strength;
+    }
+
+    pts = next;
+  }
+
+  return pts;
+}
+
+function smoothCurrentGlyph() {
+  const glyph = getGlyph();
+  glyph.points = laplacianSmooth({
+    points: glyph.points,
+    edges: glyph.edges,
+    fixed: glyph.pinned,
+    strength: 0.12,
+    iterations: 8
+  });
+  draw();
+}
+
+function resetGlyph() {
+  const glyph = getGlyph();
+  glyph.points = clonePoints(glyph.basePoints);
+  glyph.pinned.clear();
+  glyph.versions = [
+    {
+      name: "Step 01",
+      points: clonePoints(glyph.basePoints),
+      pinned: []
+    }
+  ];
+  updateVersionSelect();
+  renderGlyphList();
+  draw();
+}
+
+function saveVersion() {
+  const glyph = getGlyph();
+  const name = "Step " + String(glyph.versions.length + 1).padStart(2, "0");
+
+  glyph.versions.push({
+    name,
+    points: clonePoints(glyph.points),
+    pinned: Array.from(glyph.pinned)
+  });
+
+  updateVersionSelect();
+  ui.versionSelect.value = String(glyph.versions.length - 1);
+  renderGlyphList();
+  draw();
+}
+
+function draw() {
+  const rect = canvas.getBoundingClientRect();
+  ctx.clearRect(0, 0, rect.width, rect.height);
+
+  ctx.save();
+  ctx.translate(state.offsetX, state.offsetY);
+  ctx.scale(state.scale, state.scale);
+
+  const glyph = getGlyph();
+
+  if (ui.showOriginal.checked) {
+    drawThickGlyph(glyph.basePoints, glyph.edges, Number(ui.strokeThickness.value), "rgba(120,120,120,0.15)");
+    drawSkeleton(glyph.basePoints, glyph.edges, "rgba(120,120,120,0.5)", 1.4 / state.scale);
+  }
+
+  if (ui.showPreview.checked) {
+    drawThickGlyph(glyph.points, glyph.edges, Number(ui.strokeThickness.value), "rgba(222,184,135,0.68)");
+  }
+
+  if (ui.showSkeleton.checked) {
+    drawSkeleton(glyph.points, glyph.edges, "#ff5b5b", 2 / state.scale);
+  }
+
+  if (ui.showPoints.checked) {
+    drawPoints(glyph);
+  }
+
+  ctx.restore();
+
+  updateStatus();
+}
+
+function drawThickGlyph(points, edges, thickness, color) {
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = color;
+  ctx.lineWidth = thickness;
+
+  for (const [a, b] of edges) {
+    ctx.beginPath();
+    ctx.moveTo(points[a].x, points[a].y);
+    ctx.lineTo(points[b].x, points[b].y);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawSkeleton(points, edges, color, width) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  for (const [a, b] of edges) {
+    ctx.beginPath();
+    ctx.moveTo(points[a].x, points[a].y);
+    ctx.lineTo(points[b].x, points[b].y);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawPoints(glyph) {
+  const r = 4.2 / state.scale;
+
+  for (let i = 0; i < glyph.points.length; i++) {
+    const p = glyph.points[i];
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+
+    if (glyph.pinned.has(i)) {
+      ctx.fillStyle = "#2563eb";
+      ctx.strokeStyle = "#ffffff";
+    } else if (i === state.hoverIndex) {
+      ctx.fillStyle = "#facc15";
+      ctx.strokeStyle = "#111827";
+    } else {
+      ctx.fillStyle = "#ffffff";
+      ctx.strokeStyle = "#ef4444";
+    }
+
+    ctx.lineWidth = 1.4 / state.scale;
+    ctx.fill();
+    ctx.stroke();
+  }
+}
+
+function updateStatus() {
+  const glyph = getGlyph();
+  ui.statusBox.innerHTML = `
+    当前字形：${glyph.code}<br>
+    控制点数量：${glyph.points.length}<br>
+    边数量：${glyph.edges.length}<br>
+    固定点数量：${glyph.pinned.size}<br>
+    版本数量：${glyph.versions.length}<br>
+    当前模式：整体弹性联动已启用
+  `;
+}
+
+function exportSVG() {
+  const glyph = getGlyph();
+  const box = getBounds(glyph.points);
+  const pad = 80;
+  const w = box.width + pad * 2;
+  const h = box.height + pad * 2;
+  const ox = pad - box.minX;
+  const oy = pad - box.minY;
+
+  const thick = Number(ui.strokeThickness.value);
+
+  let lines = "";
+
+  for (const [a, b] of glyph.edges) {
+    const p1 = glyph.points[a];
+    const p2 = glyph.points[b];
+    lines += `<line x1="${p1.x + ox}" y1="${p1.y + oy}" x2="${p2.x + ox}" y2="${p2.y + oy}" stroke="#d6a46a" stroke-width="${thick}" stroke-linecap="round" />\n`;
+  }
+
+  for (const [a, b] of glyph.edges) {
+    const p1 = glyph.points[a];
+    const p2 = glyph.points[b];
+    lines += `<line x1="${p1.x + ox}" y1="${p1.y + oy}" x2="${p2.x + ox}" y2="${p2.y + oy}" stroke="#ff5b5b" stroke-width="2" stroke-linecap="round" />\n`;
+  }
+
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+<rect width="100%" height="100%" fill="white"/>
+${lines}
+</svg>`;
+
+  downloadText(`${glyph.code}_elastic.svg`, svg);
+}
+
+function exportPNG() {
+  const link = document.createElement("a");
+  link.download = `${getGlyph().code}_elastic.png`;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
+function downloadText(filename, text) {
+  const blob = new Blob([text], {type: "text/plain;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function getMouse(e) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: e.clientX - rect.left,
+    y: e.clientY - rect.top
+  };
+}
+
+function screenToWorld(p) {
+  return {
+    x: (p.x - state.offsetX) / state.scale,
+    y: (p.y - state.offsetY) / state.scale
+  };
+}
+
+function findNearestPoint(mouse, points, threshold) {
+  let best = -1;
+  let bestD = threshold;
+
+  for (let i = 0; i < points.length; i++) {
+    const d = distance(mouse, points[i]);
+    if (d < bestD) {
+      bestD = d;
+      best = i;
+    }
+  }
+
+  return best;
+}
+
+function getBounds(points) {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  for (const p of points) {
+    minX = Math.min(minX, p.x);
+    minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x);
+    maxY = Math.max(maxY, p.y);
+  }
+
+  return {
+    minX,
+    minY,
+    maxX,
+    maxY,
+    width: maxX - minX,
+    height: maxY - minY,
+    cx: (minX + maxX) / 2,
+    cy: (minY + maxY) / 2
+  };
+}
+
+function clonePoints(points) {
+  return points.map(p => ({x: p.x, y: p.y}));
+}
+
+function distance(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
+function smoothstep(t) {
+  return t * t * (3 - 2 * t);
+}
+
+init();
+</script>
+</body>
+</html>

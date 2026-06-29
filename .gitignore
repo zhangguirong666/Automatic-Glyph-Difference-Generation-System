@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Runtime outputs
+jobs/
+runtime_jobs/
+runtime_uploads/
+output/
+logs/
+real_variable_fonts/
+lora_workspace/
+nohup.out
+*.log
+*.pid
+
+# Fonts and generated assets
+*.ttf
+*.otf
+*.ttc
+*.woff
+*.woff2
+*.zip
+*.rar
+*.7z
+*.tar
+*.gz
+*.tgz
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.svgz
+
+# AI model weights
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.bin
+*.onnx
+*.gguf
+models/
+checkpoints/
+
+# Local/editor files
+.DS_Store
+Thumbs.db
+*.bak
+*.backup
+*.old
+*~

@@ -1,0 +1,11 @@
+# Optional dependencies for LoRA / Stable Diffusion / local LLM modules.
+# Install only when those modules are needed.
+torch
+torchvision
+diffusers
+transformers
+accelerate
+safetensors
+sentencepiece
+protobuf
+modelscope
